@@ -1,29 +1,19 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, } from 'vue';
 import Alert from './components/Alert.vue';
+import Spinner from './components/Spinner.vue'
+import useCrypto from './composables/useCrypto'
 
-const currencies = ref([
-  { code: 'USD', text: 'US Dollar' },
-  { code: 'MXN', text: 'Mexican Peso' },
-  { code: 'EUR', text: 'Euro' },
-  { code: 'GBP', text: 'Pound Sterling' },
-  { code: 'COP', text: 'Colombian Peso' },
-])
+const { currencies, cryptoCurrencies, loading, responseEstimate, getEstimate, showResult } = useCrypto()
 
 const estimate = reactive({
   currency: '',
   cryptoCurrency: ''
 })
 
-const cryptoCurrencies = ref([])
-const error = ref('')
-const responseEstimate = ref({})
 
-onMounted(() => {
-  fetch('https://min-api.cryptocompare.com/data/top/mktcapfull?limit=10&tsym=USD')
-    .then(response => response.json())
-    .then(({ Data }) => cryptoCurrencies.value = Data)
-})
+const error = ref('')
+
 
 const estimateCrypto = () => {
   if (Object.values(estimate).includes('')) {
@@ -31,20 +21,9 @@ const estimateCrypto = () => {
     return
   }
   error.value = ''
-  getEstimate()
+  getEstimate(estimate)
 }
 
-const getEstimate = async () => {
-  const { cryptoCurrency, currency } = estimate
-  const url = `https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${cryptoCurrency}&tsyms=${currency}`
-  const response = await fetch(url)
-  const data = await response.json()
-  responseEstimate.value = data.DISPLAY[cryptoCurrency][currency]
-}
-
-const showResult = computed(() => {
-  return Object.values(responseEstimate.value).length > 0
-})
 </script>
 
 <template>
@@ -70,6 +49,7 @@ const showResult = computed(() => {
         </div>
         <input type="submit" value="Estimate">
       </form>
+      <Spinner v-if="loading" />
       <div v-if="showResult" class="container-result">
         <h2>Result</h2>
         <div class="result"><img :src="`https://cryptocompare.com${responseEstimate.IMAGEURL}`" alt="crypto img">
