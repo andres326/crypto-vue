@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import Alert from './components/Alert.vue';
 
 const currencies = ref([
@@ -10,13 +10,14 @@ const currencies = ref([
   { code: 'COP', text: 'Colombian Peso' },
 ])
 
-const estimation = reactive({
+const estimate = reactive({
   currency: '',
   cryptoCurrency: ''
 })
 
 const cryptoCurrencies = ref([])
 const error = ref('')
+const responseEstimate = ref({})
 
 onMounted(() => {
   fetch('https://min-api.cryptocompare.com/data/top/mktcapfull?limit=10&tsym=USD')
@@ -25,17 +26,25 @@ onMounted(() => {
 })
 
 const estimateCrypto = () => {
-  if (Object.values(estimation).includes('')) {
+  if (Object.values(estimate).includes('')) {
     error.value = 'All fields are required'
     return
   }
   error.value = ''
+  getEstimate()
 }
 
 const getEstimate = async () => {
-  const { cryptoCurrency, currency } = estimation
+  const { cryptoCurrency, currency } = estimate
   const url = `https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${cryptoCurrency}&tsyms=${currency}`
+  const response = await fetch(url)
+  const data = await response.json()
+  responseEstimate.value = data.DISPLAY[cryptoCurrency][currency]
 }
+
+const showResult = computed(() => {
+  return Object.values(responseEstimate.value).length > 0
+})
 </script>
 
 <template>
@@ -46,14 +55,14 @@ const getEstimate = async () => {
       <form class="form" @submit.prevent="estimateCrypto">
         <div class="field">
           <label for="currency">Currency:</label>
-          <select id="currency" v-model="estimation.currency">
+          <select id="currency" v-model="estimate.currency">
             <option value="">-- Select --</option>
             <option v-for="currency in currencies" :value="currency.code">{{ currency.text }}</option>
           </select>
         </div>
         <div class="field">
           <label for="crypto">Crypto Currency:</label>
-          <select id="crypto" v-model="estimation.cryptoCurrency">
+          <select id="crypto" v-model="estimate.cryptoCurrency">
             <option value="">-- Select --</option>
             <option v-for="crypto in cryptoCurrencies" :value="crypto.CoinInfo.Name">{{ crypto.CoinInfo.FullName }}
             </option>
@@ -61,6 +70,18 @@ const getEstimate = async () => {
         </div>
         <input type="submit" value="Estimate">
       </form>
+      <div v-if="showResult" class="container-result">
+        <h2>Result</h2>
+        <div class="result"><img :src="`https://cryptocompare.com${responseEstimate.IMAGEURL}`" alt="crypto img">
+          <div>
+            <p>Price is: <span>{{ responseEstimate.PRICE }}</span></p>
+            <p>Highest price for the day: <span>{{ responseEstimate.HIGHDAY }}</span></p>
+            <p>Lowest price for the day: <span>{{ responseEstimate.LOWDAY }}</span></p>
+            <p>Variation last 24h: <span>{{ responseEstimate.CHANGEPCT24HOUR }}%</span></p>
+            <p>Last update: <span>{{ responseEstimate.LASTUPDATE }}</span></p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
